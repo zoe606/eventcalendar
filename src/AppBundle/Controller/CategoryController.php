@@ -6,6 +6,7 @@ use AppBundle\Entity\Category;
 use Symfony\Bundle\FrameworkBundle\Controller\Controller;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Routing\Annotation\Route;
+
 use Symfony\Component\Form\Extension\Core\Type\TextType;
 use Symfony\Component\Form\Extension\Core\Type\DateType;
 use Symfony\Component\Form\Extension\Core\Type\SubmitType;
@@ -50,6 +51,8 @@ class CategoryController extends Controller
 
                 $category->setName($name);
                 $category->setCreateDate($now);
+                 print_r($category);
+                die();
 
                 $em = $this->getDoctrine()->getManager();
                 $em->persist($category);
@@ -73,20 +76,78 @@ class CategoryController extends Controller
     /**
      * @Route("/category/edit/{id}", name="category_edit")
      */
-    public function editAction(Request $request)
+    public function editAction($id, Request $request)
     {
-        // replace this example code with whatever you need
+        $category = $this->getDoctrine()
+                ->getRepository('AppBundle:Category')
+                ->find($id);
+
+        if (!$category) {
+            throw $this->createNotFoundException(
+                'No category found for id' . $id
+            );
+        }
+        $category->setName($category->getName());        
+
+        $form = $this->createFormBuilder($category)
+            ->add('name', TextType::class, array('attr' => array('class' => 'form-control', 'style' => 'margin-bottom:15px')))
+            ->add('save', SubmitType::class, array('label' => 'Create Category', 'attr' => array('class' => 'btn btn-primary')))
+            ->getForm();
+
+            // handle request
+            $form->handleRequest($request);
+
+            // check submit
+            if ($form->isSubmitted() && $form->isValid()) {
+                $name = $form['name']->getData();
+
+ 
+                //  print_r($category);
+                // die();
+
+                $em = $this->getDoctrine()->getManager();
+                $category = $em->getRepository('AppBundle:Category')->find($id);
+
+                $category->setName($name);
+                $em->flush();
+
+                $this->addFlash(
+                    'notice',
+                    'Category Updated'
+                );
+
+                return $this->redirectToRoute('category_list');
+            }
+
+            // render template
         return $this->render('category/edit.html.twig', [
-            'base_dir' => realpath($this->getParameter('kernel.project_dir')).DIRECTORY_SEPARATOR,
+            'form' => $form->createView()
         ]);
     }
 
     /**
      * @Route("/category/delete/{id}", name="category_delete")
      */
-    public function deleteAction(Request $request)
+    public function deleteAction($id)
     {
-        
+        $em = $this->getDoctrine()->getManager();
+        $category = $em->getRepository('AppBundle:Category')->find($id);
+
+        if (!$category) {
+            throw $this->createNotFoundException(
+                'No Category found with the id'. $id
+            );
+        }
+
+        $em->remove($category);
+        $em->flush();
+
+        $this->addFlash(
+            'notice',
+            'Category Deleted'
+        );
+
+        return $this->redirectToRoute('category_list');
     }
 
 }
